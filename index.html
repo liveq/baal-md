@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="실시간 마크다운 에디터. GitHub Flavored Markdown 지원, 코드 하이라이팅, HTML/MD 다운로드">
+    <meta name="keywords" content="마크다운 에디터, Markdown Editor, 마크다운 변환, MD to HTML, 마크다운 미리보기, GitHub Markdown, 온라인 마크다운 에디터">
+    <meta name="author" content="BAAL">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://md.baal.co.kr/">
+    <meta property="og:title" content="마크다운 에디터 - BAAL">
+    <meta property="og:description" content="실시간 마크다운 에디터. GitHub Flavored Markdown 지원, 코드 하이라이팅, HTML/MD 다운로드">
+    <meta property="og:image" content="https://md.baal.co.kr/og-image.png">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://md.baal.co.kr/">
+    <meta property="twitter:title" content="마크다운 에디터 - BAAL">
+    <meta property="twitter:description" content="실시간 마크다운 에디터. GitHub Flavored Markdown 지원, 코드 하이라이팅, HTML/MD 다운로드">
+    <meta property="twitter:image" content="https://md.baal.co.kr/og-image.png">
+
+    <title>마크다운 에디터 - BAAL</title>
+
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2886185075996969"
+     crossorigin="anonymous"></script>
+
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-XXXXXXXXXX');
+    </script>
+
+    <!-- Marked.js for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
+
+    <!-- Highlight.js for code syntax highlighting -->
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/highlight.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github-dark.min.css">
+
+    <!-- DOMPurify for XSS protection -->
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
+
+    <!-- 공통 스타일 -->
+    <link rel="stylesheet" href="../_common/common.css">
+    <style>
+        .toolbar {
+            background: var(--bg-secondary);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .toolbar-btn {
+            padding: 8px 16px;
+            background: var(--bg-primary);
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+            font-size: 0.9em;
+        }
+
+        .toolbar-btn:hover {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        .toolbar-separator {
+            width: 1px;
+            height: 30px;
+            background: var(--border-color);
+        }
+
+        .editor-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .editor-panel {
+            background: var(--bg-secondary);
+            padding: 20px;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .editor-panel h3 {
+            margin: 0 0 15px 0;
+        }
+
+        #markdownInput {
+            width: 100%;
+            min-height: 500px;
+            padding: 15px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: 'Courier New', Monaco, monospace;
+            font-size: 0.95em;
+            resize: vertical;
+            line-height: 1.6;
+        }
+
+        #preview {
+            min-height: 500px;
+            padding: 15px;
+            background: var(--bg-primary);
+            border-radius: 8px;
+            overflow-y: auto;
+            line-height: 1.6;
+        }
+
+        /* Markdown preview styles */
+        #preview h1, #preview h2, #preview h3, #preview h4, #preview h5, #preview h6 {
+            margin-top: 24px;
+            margin-bottom: 16px;
+            font-weight: 600;
+            line-height: 1.25;
+        }
+
+        #preview h1 {
+            font-size: 2em;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.3em;
+        }
+
+        #preview h2 {
+            font-size: 1.5em;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.3em;
+        }
+
+        #preview h3 { font-size: 1.25em; }
+        #preview h4 { font-size: 1em; }
+        #preview h5 { font-size: 0.875em; }
+        #preview h6 { font-size: 0.85em; color: var(--text-secondary); }
+
+        #preview p {
+            margin-top: 0;
+            margin-bottom: 16px;
+        }
+
+        #preview code {
+            background: var(--bg-secondary);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        #preview pre {
+            background: #282c34;
+            color: #abb2bf;
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 16px 0;
+        }
+
+        #preview pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+
+        #preview blockquote {
+            border-left: 4px solid var(--primary-color);
+            margin: 16px 0;
+            padding-left: 16px;
+            color: var(--text-secondary);
+        }
+
+        #preview table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 16px 0;
+        }
+
+        #preview th, #preview td {
+            border: 1px solid var(--border-color);
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        #preview th {
+            background: var(--bg-secondary);
+            font-weight: 600;
+        }
+
+        #preview tr:hover {
+            background: var(--bg-secondary);
+        }
+
+        #preview ul, #preview ol {
+            margin: 16px 0;
+            padding-left: 32px;
+        }
+
+        #preview li {
+            margin: 4px 0;
+        }
+
+        #preview a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        #preview a:hover {
+            text-decoration: underline;
+        }
+
+        #preview img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 16px 0;
+        }
+
+        #preview hr {
+            border: none;
+            border-top: 2px solid var(--border-color);
+            margin: 24px 0;
+        }
+
+        #preview del {
+            text-decoration: line-through;
+        }
+
+        #preview input[type="checkbox"] {
+            margin-right: 8px;
+        }
+
+        .actions-section {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        @media (max-width: 1024px) {
+            .editor-container {
+                grid-template-columns: 1fr;
+            }
+
+            .toolbar {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 다크모드 토글 -->
+    <div class="theme-toggle">
+        <button id="themeToggle" aria-label="다크모드 전환">
+            <span class="icon-light">☀️</span>
+            <span class="icon-dark">🌙</span>
+        </button>
+    </div>
+
+    <!-- 언어 전환 -->
+    <div class="lang-toggle">
+        <button id="langToggle" data-lang="ko">
+            <span class="lang-ko">EN</span>
+            <span class="lang-en">KO</span>
+        </button>
+    </div>
+
+    <!-- 도구 버튼 -->
+    <div class="tools-toggle">
+        <button id="toolsToggle" data-ko="더 많은 도구" data-en="More Tools">
+            🧰
+        </button>
+    </div>
+
+    <!-- 메인 컨테이너 -->
+    <div class="container">
+        <header>
+            <h1 data-ko="마크다운 에디터" data-en="Markdown Editor">마크다운 에디터</h1>
+            <p class="subtitle" data-ko="실시간 미리보기로 마크다운 작성" data-en="Write markdown with real-time preview">실시간 미리보기로 마크다운 작성</p>
+        </header>
+
+        <main>
+            <!-- 툴바 -->
+            <div class="toolbar">
+                <button class="toolbar-btn" onclick="insertMarkdown('**', '**', 'bold text')" title="Bold (Ctrl+B)"><strong>B</strong></button>
+                <button class="toolbar-btn" onclick="insertMarkdown('_', '_', 'italic text')" title="Italic (Ctrl+I)"><em>I</em></button>
+                <button class="toolbar-btn" onclick="insertMarkdown('~~', '~~', 'strikethrough')" title="Strikethrough">~~S~~</button>
+                <div class="toolbar-separator"></div>
+                <button class="toolbar-btn" onclick="insertMarkdown('[', '](url)', 'link text')" title="Link (Ctrl+K)" data-ko="링크" data-en="Link">링크</button>
+                <button class="toolbar-btn" onclick="insertMarkdown('`', '`', 'code')" title="Inline Code" data-ko="코드" data-en="Code">코드</button>
+                <button class="toolbar-btn" onclick="insertMarkdown('```\n', '\n```', 'code block')" title="Code Block" data-ko="코드 블록" data-en="Block">코드 블록</button>
+                <div class="toolbar-separator"></div>
+                <button class="toolbar-btn" onclick="insertMarkdown('- ', '', 'list item')" title="List" data-ko="목록" data-en="List">목록</button>
+                <button class="toolbar-btn" onclick="insertMarkdown('> ', '', 'quote')" title="Quote" data-ko="인용" data-en="Quote">인용</button>
+                <button class="toolbar-btn" onclick="insertTable()" title="Table" data-ko="표" data-en="Table">표</button>
+            </div>
+
+            <!-- 액션 버튼 -->
+            <div class="actions-section">
+                <button class="btn" onclick="uploadMarkdown()" data-ko="파일 업로드" data-en="Upload File">파일 업로드</button>
+                <button class="btn" onclick="downloadMarkdown()" data-ko="MD 다운로드" data-en="Download MD">MD 다운로드</button>
+                <button class="btn" onclick="downloadHTML()" data-ko="HTML 다운로드" data-en="Download HTML">HTML 다운로드</button>
+                <input type="file" id="fileInput" accept=".md,.markdown,.txt" style="display: none;">
+            </div>
+
+            <!-- 에디터 -->
+            <div class="editor-container">
+                <div class="editor-panel">
+                    <h3 data-ko="마크다운 입력" data-en="Markdown Input">마크다운 입력</h3>
+                    <textarea id="markdownInput" placeholder="# Hello World
+
+This is **bold** and _italic_.
+
+## Code Example
+```javascript
+console.log('Hello!');
+```
+
+- [x] Task completed
+- [ ] Task pending
+
+[Link](https://example.com)"></textarea>
+                </div>
+
+                <div class="editor-panel">
+                    <h3 data-ko="미리보기" data-en="Preview">미리보기</h3>
+                    <div id="preview"></div>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <div class="footer-content">
+                <p class="footer-brand">
+                    Made by <a href="https://baal.co.kr" target="_blank">BAAL</a>
+                </p>
+                <p class="footer-contact">
+                    <a href="mailto:baal.contract@gmail.com">baal.contract@gmail.com</a>
+                </p>
+                <p class="footer-links">
+                    <a href="https://baal.co.kr/privacy" target="_blank" data-ko="개인정보처리방침" data-en="Privacy Policy">개인정보처리방침</a>
+                    <span class="separator">|</span>
+                    <a href="https://baal.co.kr/terms" target="_blank" data-ko="이용약관" data-en="Terms of Service">이용약관</a>
+                </p>
+                <p class="footer-copyright">&copy; 2025 BAAL. All rights reserved.</p>
+            </div>
+        </footer>
+    </div>
+
+    <!-- 공통 스크립트 -->
+    <script src="../_common/common.js"></script>
+    <script>
+        // Configure marked
+        marked.setOptions({
+            gfm: true,
+            breaks: true,
+            tables: true,
+            highlight: function(code, lang) {
+                if (lang && hljs.getLanguage(lang)) {
+                    try {
+                        return hljs.highlight(code, { language: lang }).value;
+                    } catch (e) {
+                        console.error('Highlight error:', e);
+                    }
+                }
+                return hljs.highlightAuto(code).value;
+            }
+        });
+
+        // Render markdown
+        function renderMarkdown(markdown) {
+            try {
+                const rawHtml = marked.parse(markdown);
+                const cleanHtml = DOMPurify.sanitize(rawHtml, {
+                    ALLOWED_TAGS: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'a', 'ul', 'ol', 'li', 'blockquote', 'code', 'pre', 'strong', 'em', 'img', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'hr', 'br', 'del', 'input', 'span'],
+                    ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'type', 'checked', 'disabled', 'class']
+                });
+                return cleanHtml;
+            } catch (error) {
+                return '<p style="color: #ef4444;">Markdown parsing error: ' + error.message + '</p>';
+            }
+        }
+
+        // Update preview
+        function updatePreview() {
+            const markdown = document.getElementById('markdownInput').value;
+            const html = renderMarkdown(markdown);
+            document.getElementById('preview').innerHTML = html;
+        }
+
+        // Debounced update
+        let debounceTimer;
+        document.getElementById('markdownInput').addEventListener('input', () => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(updatePreview, 300);
+        });
+
+        // Insert markdown syntax
+        function insertMarkdown(prefix, suffix, placeholder) {
+            const textarea = document.getElementById('markdownInput');
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const selectedText = textarea.value.substring(start, end);
+            const text = selectedText || placeholder;
+
+            const before = textarea.value.substring(0, start);
+            const after = textarea.value.substring(end);
+
+            textarea.value = before + prefix + text + suffix + after;
+
+            const newCursorPos = start + prefix.length + text.length;
+            textarea.setSelectionRange(newCursorPos, newCursorPos);
+            textarea.focus();
+
+            updatePreview();
+        }
+
+        // Insert table
+        function insertTable() {
+            const table = '| Header 1 | Header 2 | Header 3 |\n| -------- | -------- | -------- |\n| Cell 1   | Cell 2   | Cell 3   |\n| Cell 4   | Cell 5   | Cell 6   |';
+            insertMarkdown('', '', table);
+        }
+
+        // Keyboard shortcuts
+        document.getElementById('markdownInput').addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+                e.preventDefault();
+                insertMarkdown('**', '**', 'bold text');
+            }
+
+            if ((e.ctrlKey || e.metaKey) && e.key === 'i') {
+                e.preventDefault();
+                insertMarkdown('_', '_', 'italic text');
+            }
+
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault();
+                insertMarkdown('[', '](url)', 'link text');
+            }
+        });
+
+        // Upload markdown file
+        function uploadMarkdown() {
+            document.getElementById('fileInput').click();
+        }
+
+        document.getElementById('fileInput').addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+
+                reader.onload = (event) => {
+                    document.getElementById('markdownInput').value = event.target.result;
+                    updatePreview();
+                };
+
+                reader.onerror = () => {
+                    const lang = document.body.getAttribute('data-lang') || 'ko';
+                    alert(lang === 'ko' ? '파일 읽기 실패' : 'Failed to read file');
+                };
+
+                reader.readAsText(file, 'UTF-8');
+            }
+        });
+
+        // Download markdown
+        function downloadMarkdown() {
+            const markdown = document.getElementById('markdownInput').value;
+            const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'markdown.md';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Download HTML
+        function downloadHTML() {
+            const markdown = document.getElementById('markdownInput').value;
+            const html = renderMarkdown(markdown);
+
+            const styledHtml = `<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown Preview</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github-dark.min.css">
+    <style>
+        body {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        h1, h2 { border-bottom: 1px solid #eee; padding-bottom: 0.3em; }
+        code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; }
+        pre { background: #282c34; color: #abb2bf; padding: 16px; border-radius: 8px; overflow-x: auto; }
+        pre code { background: none; padding: 0; }
+        table { border-collapse: collapse; width: 100%; margin: 16px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background: #f4f4f4; font-weight: 600; }
+        blockquote { border-left: 4px solid #6366f1; margin: 0; padding-left: 16px; color: #666; }
+        img { max-width: 100%; height: auto; }
+        a { color: #6366f1; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    ${html}
+</body>
+</html>`;
+
+            const blob = new Blob([styledHtml], { type: 'text/html;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'markdown.html';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Initialize with sample content
+        document.getElementById('markdownInput').value = `# Hello World
+
+This is a **markdown editor** with _real-time preview_.
+
+## Features
+
+- GitHub Flavored Markdown
+- Code syntax highlighting
+- Tables support
+- Task lists
+
+## Code Example
+
+\`\`\`javascript
+function greet(name) {
+    console.log('Hello, ' + name + '!');
+}
+
+greet('World');
+\`\`\`
+
+## Table
+
+| Feature | Status |
+| ------- | ------ |
+| GFM     | ✓      |
+| Tables  | ✓      |
+| Code    | ✓      |
+
+## Task List
+
+- [x] Real-time preview
+- [x] Code highlighting
+- [ ] More features coming soon
+
+> This is a blockquote.
+> You can write multiple lines.
+
+[Visit BAAL](https://baal.co.kr)
+`;
+
+        // Initial render
+        updatePreview();
+    </script>
+</body>
+</html>
